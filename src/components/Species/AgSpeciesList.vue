@@ -56,7 +56,10 @@
           </td>
           <td class="px-6 py-4 whitespace-nowrap">
             <span
-              class="inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-green-800"
+              class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+              :class="
+                row.status === 'inProcess' ? 'bg-red-100' : 'bg-green-100'
+              "
             >
               {{ getStatusLabel(row.status) }}
             </span>
@@ -66,7 +69,7 @@
           >
             <a
               href="#"
-              @click="editSpecie(row)"
+              @click="showSpecie(row._id)"
               class="text-indigo-600 hover:text-indigo-900 mr-2"
               ><FontAwesomeIcon :icon="['fas', 'pen']"
             /></a>
@@ -80,119 +83,25 @@
         </tr>
       </template>
     </AgTable>
-
-    <AgModal :isOpen="isOpenModal">
-      <template #default>
-        <div class="flex items-center justify-between">
-          <h3 class="text-2xl">
-            <span v-if="specieData._id">Edit</span
-            ><span v-else>Add</span>&nbsp;Specie
-          </h3>
-          <svg
-            @click="isOpenModal = false"
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-8 h-8 text-red-900 cursor-pointer"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        </div>
-        <div class="mt-4">
-          <form id="specieForm" @submit.prevent="saveSpecie()">
-            <label class="block w-96 mb-5">
-              <input
-                v-if="!specieData._id"
-                type="text"
-                name="image"
-                class="mt-1 px-3 py-2 bg-white border shadow-sm border-slate-300 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-sky-500 block w-full rounded-md sm:text-sm focus:ring-1"
-                placeholder="Image URL"
-                v-model="specieData.image"
-              />
-              <img v-else :src="specieData.image" width="100" />
-            </label>
-
-            <label class="block w-96 mb-5">
-              <input
-                type="text"
-                name="name"
-                class="mt-1 px-3 py-2 bg-white border shadow-sm border-slate-300 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-sky-500 block w-full rounded-md sm:text-sm focus:ring-1"
-                placeholder="Name"
-                v-model="specieData.name"
-              />
-            </label>
-
-            <label class="block w-96 mb-5">
-              <input
-                type="text"
-                name="commonName"
-                class="mt-1 px-3 py-2 bg-white border shadow-sm border-slate-300 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-sky-500 block w-full rounded-md sm:text-sm focus:ring-1"
-                placeholder="Common Name"
-                v-model="specieData.commonName"
-              />
-            </label>
-
-            <label class="block w-96 mb-5">
-              <input
-                type="text"
-                name="family"
-                class="mt-1 px-3 py-2 bg-white border shadow-sm border-slate-300 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-sky-500 block w-full rounded-md sm:text-sm focus:ring-1"
-                placeholder="Family"
-                v-model="specieData.family"
-              />
-            </label>
-
-            <label class="block w-96 mb-5">
-              <select
-                name="status"
-                class="mt-1 px-3 py-2 bg-white border shadow-sm border-slate-300 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-sky-500 block w-full rounded-md sm:text-sm focus:ring-1"
-                v-model="specieData.status"
-              >
-                <option value="inProcess">In Process</option>
-                <option value="done">Done</option>
-              </select>
-            </label>
-
-            <button
-              class="px-6 py-2 text-blue-800 border border-blue-600 rounded float-right"
-              @click="isOpenModal = false"
-            >
-              Cancel
-            </button>
-            <button
-              class="px-6 py-2 mr-2 text-blue-100 border border-blue-100 bg-blue-600 rounded float-right"
-              @click="createSpecie()"
-            >
-              Save
-            </button>
-          </form>
-        </div>
-      </template>
-    </AgModal>
   </div>
 </template>
 
 <script lang="ts">
 import { onMounted, ref, inject } from 'vue';
+import { useRouter } from 'vue-router';
 import AgTable from '../UI/Table/AgTable.vue';
-import AgModal from '../UI/Modal/AgModal.vue';
 import axios from 'axios';
 
 export default {
   components: {
     AgTable,
-    AgModal,
   },
   setup() {
     /* Ref */
-    const isOpenModal = ref(false);
     const specieData = ref({});
+
+    /* Use router */
+    const router = useRouter();
 
     /* Inject swal */
     const swal: any = inject('$swal');
@@ -218,53 +127,12 @@ export default {
     /* Methods */
 
     const addSpecie = () => {
-      specieData.value = {};
-
-      isOpenModal.value = true;
-    };
-
-    const editSpecie = (specie: any) => {
-      specieData.value = specie;
-
-      isOpenModal.value = true;
-    };
-
-    const saveSpecie = () => {
-      console.log({ specieData });
-    };
-
-    const createSpecie = async () => {
-      try {
-        const result: any = await axios({
-          method: 'POST',
-          url: 'http://localhost:3000/graphql',
-          data: {
-            query: `
-              mutation createSpecie($input: CreateSpecieInput!) {
-                createSpecie(input: $input) {
-                  _id
-                  name
-                  commonName
-                  image
-                  family
-                  status
-                }
-              }
-            `,
-            variables: {
-              input: { ...specieData.value },
-            },
-          },
-        });
-
-        if (result.data.data.createSpecie) {
-          species.value.push(result.data.data.createSpecie);
-
-          isOpenModal.value = false;
-        }
-      } catch (error) {
-        console.error(error);
-      }
+      router.push({
+        name: 'Specie',
+        params: {
+          _id: '',
+        },
+      });
     };
 
     /* Get graphql species */
@@ -294,8 +162,6 @@ export default {
         console.error(error);
       }
     };
-
-    getSpecies();
 
     const deleteSpecie = async (_id: string) => {
       try {
@@ -348,22 +214,28 @@ export default {
       return status === 'inProcess' ? 'In Process' : 'Done';
     };
 
+    const showSpecie = (_id: string) => {
+      router.push({
+        name: 'Specie',
+        params: {
+          _id,
+        },
+      });
+    };
+
     onMounted(() => {
       getSpecies();
     });
 
     return {
-      isOpenModal,
       columns,
       species,
       specieData,
       addSpecie,
-      editSpecie,
-      saveSpecie,
       getStatusLabel,
-      createSpecie,
       swalDeleteSpecie,
       deleteSpecie,
+      showSpecie,
     };
   },
 };
